@@ -404,6 +404,7 @@ export const App = () => {
               height={133}
               style={{ marginTop: "-45px" }}
             />
+            <Gap size={16} />
           </div>
 
           <div
