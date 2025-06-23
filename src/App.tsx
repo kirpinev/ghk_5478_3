@@ -19,30 +19,33 @@ import image5 from "./assets/image5.png";
 import icon1 from "./assets/icon1.png";
 import icon2 from "./assets/icon2.png";
 
-// function calculateMonthlyPayment(
-//   annualRate: number,
-//   periodsPerYear: number,
-//   totalPeriods: number,
-//   loanAmount: number,
-// ) {
-//   const monthlyRate = annualRate / periodsPerYear;
-//
-//   return (
-//     (monthlyRate * loanAmount) / (1 - Math.pow(1 + monthlyRate, -totalPeriods))
-//   );
-// }
+function calculateMonthlyPayment(
+  annualRate: number,
+  periodsPerYear: number,
+  totalPeriods: number,
+  loanAmount: number,
+) {
+  const monthlyRate = annualRate / periodsPerYear;
+
+  return (
+    (monthlyRate * loanAmount) / (1 - Math.pow(1 + monthlyRate, -totalPeriods))
+  );
+}
 
 export const App = () => {
-  // const [loading, setLoading] = useState(false);
-  const [thx] = useState(LS.getItem(LSKeys.ShowThx, false));
+  const [loading, setLoading] = useState(false);
+  const [thx, setThx] = useState(LS.getItem(LSKeys.ShowThx, false));
   const [amount, setAmount] = useState(16_000);
-  const [amount1, setAmount1] = useState(16_000);
-  const [years1, setYears1] = useState(1);
-  const [stringYears1, setStringYears1] = useState("На 1 год");
+  const [amount1, setAmount1] = useState(7_500_000);
+  const [years1, setYears1] = useState(5);
+  const [defaultYears, setDefaultYears] = useState(5);
+  const [stringYears1, setStringYears1] = useState("На 5 лет");
+  const [paymentType, setPaymentType] = useState("Без залога");
 
-  const [isAutoChecked, setIsAutoChecked] = useState(true);
-  const [isRealEstate, setIsRealEstate] = useState(true);
+  const [isAutoChecked, setIsAutoChecked] = useState(false);
+  const [isRealEstate, setIsRealEstate] = useState(false);
   const [step, setStep] = useState(0);
+  const [defaultSum, setDefaultSum] = useState(7_500_000);
 
   const handleSumSliderChange = ({ value }: { value: number }) => {
     setAmount(value);
@@ -95,14 +98,14 @@ export const App = () => {
   const clamp = (value: number, min: number, max: number) =>
     Math.max(min, Math.min(max, value));
 
-  // const submit = () => {
-  //   setLoading(true);
-  //   Promise.resolve().then(() => {
-  //     setLoading(false);
-  //     setThx(true);
-  //     LS.setItem(LSKeys.ShowThx, true);
-  //   });
-  // };
+  const submit = () => {
+    setLoading(true);
+    Promise.resolve().then(() => {
+      setLoading(false);
+      setThx(true);
+      LS.setItem(LSKeys.ShowThx, true);
+    });
+  };
 
   useEffect(() => {
     if (step === 1 || thx) {
@@ -111,6 +114,38 @@ export const App = () => {
       document.body.style.backgroundColor = "#F3F4F5";
     }
   }, [step]);
+
+  useEffect(() => {
+    if (isAutoChecked) {
+      setDefaultSum(7_500_000);
+      setAmount1(7_500_000);
+    }
+
+    if (isRealEstate) {
+      setDefaultSum(30_000_000);
+      setAmount1(30_000_000);
+    } else {
+      setDefaultSum(7_500_000);
+      setAmount1(7_500_000);
+    }
+
+    if (isAutoChecked && isRealEstate) {
+      setDefaultSum(30_000_000);
+      setAmount1(30_000_000);
+    }
+  }, [isRealEstate, isAutoChecked]);
+
+  useEffect(() => {
+    if (isRealEstate) {
+      setDefaultYears(15);
+      setYears1(15);
+      setStringYears1("На 15 лет");
+    } else {
+      setDefaultYears(5);
+      setYears1(5);
+      setStringYears1("На 5 лет");
+    }
+  }, [isRealEstate, isAutoChecked]);
 
   if (thx) {
     return <ThxLayout />;
@@ -218,7 +253,7 @@ export const App = () => {
               block={true}
               reversed={true}
               checked={isAutoChecked}
-              label="Автомобиль есть  "
+              label="Автомобиль есть"
               onChange={() => setIsAutoChecked((prevState) => !prevState)}
             />
           </div>
@@ -287,13 +322,13 @@ export const App = () => {
             sliderValue={amount1}
             onInputChange={handleSum1InputChange}
             onSliderChange={handleSum1SliderChange}
-            onBlur={() => setAmount1((prev) => clamp(prev, 10_000, 1_700_000))}
+            onBlur={() => setAmount1((prev) => clamp(prev, 10_000, defaultSum))}
             min={10_000}
-            max={1_700_000}
-            range={{ min: 10_000, max: 1_700_000 }}
+            max={defaultSum}
+            range={{ min: 10_000, max: defaultSum }}
             pips={{
               mode: "values",
-              values: [10_000, 1_700_000],
+              values: [10_000, defaultSum],
               format: { to: formatPipsValue },
             }}
             step={1}
@@ -346,13 +381,13 @@ export const App = () => {
             sliderValue={years1}
             onInputChange={handleYears1InputChange}
             onSliderChange={handleYears1SliderChange}
-            onBlur={() => setYears1((prev) => clamp(prev, 1, 20))}
+            onBlur={() => setYears1((prev) => clamp(prev, 1, defaultYears))}
             min={1}
-            max={20}
-            range={{ min: 1, max: 20 }}
+            max={defaultYears}
+            range={{ min: 1, max: defaultYears }}
             pips={{
               mode: "values",
-              values: [1, 20],
+              values: [1, defaultYears],
               format: { to: formatPipsYearsValue },
             }}
             step={1}
@@ -430,14 +465,27 @@ export const App = () => {
                     weight="bold"
                     defaultMargins={false}
                   >
-                    20 000 ₽/мес
+                    {calculateMonthlyPayment(
+                      0.339,
+                      12,
+                      years1 * 12,
+                      amount1,
+                    ).toLocaleString("ru-RU", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}{" "}
+                    ₽/мес
                   </Typography.Text>
                   <Typography.Text
                     tag="p"
                     view="primary-small"
                     defaultMargins={false}
                   >
-                    1 700 000 ₽
+                    {amount1.toLocaleString("ru-RU", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}{" "}
+                    ₽
                   </Typography.Text>
                   <Typography.Text
                     tag="p"
@@ -445,7 +493,7 @@ export const App = () => {
                     defaultMargins={false}
                   >
                     {years1} {years1 === 1 && "год"}{" "}
-                    {years1 > 1 && years1 <= 4 && "года"} {years1 > 5 && "лет"}
+                    {years1 > 1 && years1 <= 4 && "года"} {years1 >= 5 && "лет"}
                   </Typography.Text>
                   <Typography.Text
                     tag="p"
@@ -455,180 +503,547 @@ export const App = () => {
                     Без залога
                   </Typography.Text>
                 </div>
-                <div
-                  style={{
-                    padding: "4px 8px",
-                    backgroundColor: "#EF3124",
-                    borderRadius: "16px",
-                    display: "flex",
-                    alignItems: "center",
-                    alignSelf: "flex-start",
-                    justifyContent: "center",
-                  }}
+              </div>
+              <ButtonMobile
+                block={true}
+                size="xs"
+                onClick={() => {
+                  setPaymentType("Без залога");
+                  setStep(5);
+                }}
+              >
+                Выбрать
+              </ButtonMobile>
+            </div>
+
+            {isAutoChecked && (
+              <>
+                <Gap size={16} />
+                <div className={appSt.card}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      width: "100%",
+                    }}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-large"
+                        weight="bold"
+                        defaultMargins={false}
+                      >
+                        {calculateMonthlyPayment(
+                          0.27,
+                          12,
+                          years1 * 12,
+                          amount1,
+                        ).toLocaleString("ru-RU", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}{" "}
+                        ₽/мес
+                      </Typography.Text>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-small"
+                        defaultMargins={false}
+                      >
+                        {amount1.toLocaleString("ru-RU", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}{" "}
+                        ₽
+                      </Typography.Text>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-small"
+                        defaultMargins={false}
+                      >
+                        {years1} {years1 === 1 && "год"}{" "}
+                        {years1 > 1 && years1 <= 4 && "года"}{" "}
+                        {years1 >= 5 && "лет"}
+                      </Typography.Text>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-small"
+                        defaultMargins={false}
+                      >
+                        Под залог авто
+                      </Typography.Text>
+                    </div>
+                  </div>
+                  <ButtonMobile
+                    block={true}
+                    size="xs"
+                    onClick={() => {
+                      setPaymentType("Авто");
+                      setStep(5);
+                    }}
+                  >
+                    Выбрать
+                  </ButtonMobile>
+                </div>
+              </>
+            )}
+
+            {isRealEstate && (
+              <>
+                <Gap size={16} />
+                <div className={appSt.card}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      width: "100%",
+                    }}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-large"
+                        weight="bold"
+                        defaultMargins={false}
+                      >
+                        {calculateMonthlyPayment(
+                          0.2807,
+                          12,
+                          years1 * 12,
+                          amount1,
+                        ).toLocaleString("ru-RU", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}{" "}
+                        ₽/мес
+                      </Typography.Text>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-small"
+                        defaultMargins={false}
+                      >
+                        {amount1.toLocaleString("ru-RU", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}{" "}
+                        ₽
+                      </Typography.Text>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-small"
+                        defaultMargins={false}
+                      >
+                        {years1} {years1 === 1 && "год"}{" "}
+                        {years1 > 1 && years1 <= 4 && "года"}{" "}
+                        {years1 >= 5 && "лет"}
+                      </Typography.Text>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-small"
+                        defaultMargins={false}
+                      >
+                        Под залог недвижимости
+                      </Typography.Text>
+                    </div>
+                  </div>
+                  <ButtonMobile
+                    block={true}
+                    size="xs"
+                    onClick={() => {
+                      setPaymentType("Недвижимость");
+                      setStep(5);
+                    }}
+                  >
+                    Выбрать
+                  </ButtonMobile>
+                </div>
+              </>
+            )}
+            {(!isRealEstate || !isAutoChecked) && (
+              <>
+                <Gap size={16} />
+                <Typography.TitleResponsive
+                  font="system"
+                  tag="h3"
+                  view="small"
+                  className={appSt.productsTitle}
                 >
-                  <Typography.Text
-                    tag="p"
-                    view="primary-small"
-                    defaultMargins={false}
-                    style={{ color: "white", fontSize: "11px" }}
+                  Может подойти
+                </Typography.TitleResponsive>
+              </>
+            )}
+
+            {!isAutoChecked && (
+              <>
+                <Gap size={16} />
+                <div className={appSt.card}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      width: "100%",
+                    }}
                   >
-                    Альфа-Выгодно
-                  </Typography.Text>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-large"
+                        weight="bold"
+                        defaultMargins={false}
+                      >
+                        {calculateMonthlyPayment(
+                          0.27,
+                          12,
+                          years1 * 12,
+                          amount1,
+                        ).toLocaleString("ru-RU", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}{" "}
+                        ₽/мес
+                      </Typography.Text>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-small"
+                        defaultMargins={false}
+                      >
+                        {amount1.toLocaleString("ru-RU", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}{" "}
+                        ₽
+                      </Typography.Text>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-small"
+                        defaultMargins={false}
+                      >
+                        {years1} {years1 === 1 && "год"}{" "}
+                        {years1 > 1 && years1 <= 4 && "года"}{" "}
+                        {years1 >= 5 && "лет"}
+                      </Typography.Text>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-small"
+                        defaultMargins={false}
+                      >
+                        Под залог авто
+                      </Typography.Text>
+                    </div>
+                  </div>
+                  <ButtonMobile
+                    block={true}
+                    size="xs"
+                    onClick={() => {
+                      setPaymentType("Авто");
+                      setStep(5);
+                    }}
+                  >
+                    Выбрать
+                  </ButtonMobile>
                 </div>
-              </div>
-              <ButtonMobile block={true} size="xs">
-                Выбрать
-              </ButtonMobile>
-            </div>
-            <Gap size={16} />
-            <Typography.TitleResponsive
-              font="system"
-              tag="h3"
-              view="small"
-              className={appSt.productsTitle}
-            >
-              Может подойти
-            </Typography.TitleResponsive>
-            <Gap size={16} />
-            <div className={appSt.card}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  width: "100%",
-                }}
-              >
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <Typography.Text
-                    tag="p"
-                    view="primary-large"
-                    weight="bold"
-                    defaultMargins={false}
+              </>
+            )}
+
+            {!isRealEstate && (
+              <>
+                <Gap size={16} />
+                <div className={appSt.card}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      width: "100%",
+                    }}
                   >
-                    22 000 ₽/мес
-                  </Typography.Text>
-                  <Typography.Text
-                    tag="p"
-                    view="primary-small"
-                    defaultMargins={false}
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-large"
+                        weight="bold"
+                        defaultMargins={false}
+                      >
+                        {calculateMonthlyPayment(
+                          0.2807,
+                          12,
+                          years1 * 12,
+                          amount1,
+                        ).toLocaleString("ru-RU", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}{" "}
+                        ₽/мес
+                      </Typography.Text>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-small"
+                        defaultMargins={false}
+                      >
+                        {amount1.toLocaleString("ru-RU", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}{" "}
+                        ₽
+                      </Typography.Text>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-small"
+                        defaultMargins={false}
+                      >
+                        {years1} {years1 === 1 && "год"}{" "}
+                        {years1 > 1 && years1 <= 4 && "года"}{" "}
+                        {years1 >= 5 && "лет"}
+                      </Typography.Text>
+                      <Typography.Text
+                        tag="p"
+                        view="primary-small"
+                        defaultMargins={false}
+                      >
+                        Под залог недвижимости
+                      </Typography.Text>
+                    </div>
+                  </div>
+                  <ButtonMobile
+                    block={true}
+                    size="xs"
+                    onClick={() => {
+                      setPaymentType("Недвижимость");
+                      setStep(5);
+                    }}
                   >
-                    2 000 000 ₽
-                  </Typography.Text>
-                  <Typography.Text
-                    tag="p"
-                    view="primary-small"
-                    defaultMargins={false}
-                  >
-                    {years1} {years1 === 1 && "год"}{" "}
-                    {years1 > 1 && years1 <= 4 && "года"} {years1 > 5 && "лет"}
-                  </Typography.Text>
-                  <Typography.Text
-                    tag="p"
-                    view="primary-small"
-                    defaultMargins={false}
-                  >
-                    Без залога
-                  </Typography.Text>
+                    Выбрать
+                  </ButtonMobile>
                 </div>
-              </div>
-              <ButtonMobile block={true} size="xs">
-                Выбрать
-              </ButtonMobile>
-            </div>
-            <Gap size={16} />
-            <div className={appSt.card}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  width: "100%",
-                }}
-              >
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <Typography.Text
-                    tag="p"
-                    view="primary-large"
-                    weight="bold"
-                    defaultMargins={false}
-                  >
-                    18 000 ₽/мес
-                  </Typography.Text>
-                  <Typography.Text
-                    tag="p"
-                    view="primary-small"
-                    defaultMargins={false}
-                  >
-                    1 700 000 ₽
-                  </Typography.Text>
-                  <Typography.Text
-                    tag="p"
-                    view="primary-small"
-                    defaultMargins={false}
-                  >
-                    {years1} {years1 === 1 && "год"}{" "}
-                    {years1 > 1 && years1 <= 4 && "года"} {years1 > 5 && "лет"}
-                  </Typography.Text>
-                  <Typography.Text
-                    tag="p"
-                    view="primary-small"
-                    defaultMargins={false}
-                  >
-                    Под залог авто
-                  </Typography.Text>
-                </div>
-              </div>
-              <ButtonMobile block={true} size="xs">
-                Выбрать
-              </ButtonMobile>
-            </div>
-            <Gap size={16} />
-            <div className={appSt.card}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  width: "100%",
-                }}
-              >
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <Typography.Text
-                    tag="p"
-                    view="primary-large"
-                    weight="bold"
-                    defaultMargins={false}
-                  >
-                    16 000 ₽/мес
-                  </Typography.Text>
-                  <Typography.Text
-                    tag="p"
-                    view="primary-small"
-                    defaultMargins={false}
-                  >
-                    1 700 000 ₽
-                  </Typography.Text>
-                  <Typography.Text
-                    tag="p"
-                    view="primary-small"
-                    defaultMargins={false}
-                  >
-                    {years1} {years1 === 1 && "год"}{" "}
-                    {years1 > 1 && years1 <= 4 && "года"} {years1 > 5 && "лет"}
-                  </Typography.Text>
-                  <Typography.Text
-                    tag="p"
-                    view="primary-small"
-                    defaultMargins={false}
-                  >
-                    Под залог недвижимости
-                  </Typography.Text>
-                </div>
-              </div>
-              <ButtonMobile block={true} size="xs">
-                Выбрать
-              </ButtonMobile>
-            </div>
+              </>
+            )}
           </div>
         </div>
+      )}
+
+      {step === 5 && (
+        <>
+          <div
+            className={appSt.container}
+            style={{
+              paddingLeft: 0,
+              paddingRight: 0,
+              paddingTop: 0,
+              paddingBottom: 0,
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: "#F3F4F5",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Gap size={32} />
+              <Typography.Text
+                tag="p"
+                view="primary-medium"
+                color="secondary"
+                defaultMargins={false}
+                style={{ textAlign: "center" }}
+              >
+                Кредит наличными
+              </Typography.Text>
+              <Typography.TitleResponsive
+                font="system"
+                tag="h3"
+                view="medium"
+                className={appSt.productsTitle}
+                style={{ textAlign: "center" }}
+              >
+                На своих условиях
+              </Typography.TitleResponsive>
+              <Gap size={48} />
+            </div>
+
+            <div
+              className={appSt.sumContainer}
+              style={{
+                padding: "16px",
+                borderRadius: "16px",
+                marginTop: "-16px",
+                height: "calc(100vh - 130px)",
+              }}
+            >
+              <div className={appSt.sumCard}>
+                <Typography.Text
+                  tag="p"
+                  view="primary-large"
+                  weight="bold"
+                  defaultMargins={false}
+                >
+                  {amount1.toLocaleString("ru-RU", {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })}{" "}
+                  ₽
+                </Typography.Text>
+                <Typography.Text
+                  tag="p"
+                  view="primary-small"
+                  color="secondary"
+                  defaultMargins={false}
+                >
+                  Сумма кредита
+                </Typography.Text>
+              </div>
+              <Divider className={appSt.divider} />
+              <div
+                className={appSt.sumCard}
+                style={{ borderRadius: 0, marginTop: "-1px" }}
+              >
+                <Typography.Text
+                  tag="p"
+                  view="primary-large"
+                  weight="bold"
+                  defaultMargins={false}
+                >
+                  На {years1} {years1 === 1 && "год"}{" "}
+                  {years1 <= 4 && years1 > 1 && "года"}
+                  {years1 > 4 && "лет"}
+                </Typography.Text>
+                <Typography.Text
+                  tag="p"
+                  view="primary-small"
+                  color="secondary"
+                  defaultMargins={false}
+                >
+                  Срок кредита
+                </Typography.Text>
+              </div>
+              <Divider className={appSt.divider} />
+              <div
+                className={appSt.sumCard}
+                style={{ borderRadius: 0, marginTop: "-1px" }}
+              >
+                {paymentType === "Без залога" && (
+                  <Typography.Text
+                    tag="p"
+                    view="primary-large"
+                    weight="bold"
+                    defaultMargins={false}
+                  >
+                    {calculateMonthlyPayment(
+                      0.339,
+                      12,
+                      years1 * 12,
+                      amount1,
+                    ).toLocaleString("ru-RU", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}{" "}
+                    ₽
+                  </Typography.Text>
+                )}
+
+                {paymentType === "Авто" && (
+                  <Typography.Text
+                    tag="p"
+                    view="primary-large"
+                    weight="bold"
+                    defaultMargins={false}
+                  >
+                    {calculateMonthlyPayment(
+                      0.27,
+                      12,
+                      years1 * 12,
+                      amount1,
+                    ).toLocaleString("ru-RU", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}{" "}
+                    ₽
+                  </Typography.Text>
+                )}
+
+                {paymentType === "Недвижимость" && (
+                  <Typography.Text
+                    tag="p"
+                    view="primary-large"
+                    weight="bold"
+                    defaultMargins={false}
+                  >
+                    {calculateMonthlyPayment(
+                      0.2807,
+                      12,
+                      years1 * 12,
+                      amount1,
+                    ).toLocaleString("ru-RU", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}{" "}
+                    ₽
+                  </Typography.Text>
+                )}
+                <Typography.Text
+                  tag="p"
+                  view="primary-small"
+                  color="secondary"
+                  defaultMargins={false}
+                >
+                  Платёж в месяц
+                </Typography.Text>
+              </div>
+              <Divider className={appSt.divider} />
+              <div
+                className={appSt.sumCard}
+                style={{
+                  borderBottomLeftRadius: "1rem",
+                  borderBottomRightRadius: "1rem",
+                  borderTopLeftRadius: 0,
+                  borderTopRightRadius: 0,
+                  marginTop: "-1px",
+                }}
+              >
+                <Typography.Text
+                  tag="p"
+                  view="primary-large"
+                  defaultMargins={false}
+                  weight={"bold"}
+                >
+                  {paymentType}
+                </Typography.Text>
+                <Typography.Text
+                  tag="p"
+                  view="primary-small"
+                  color="secondary"
+                  defaultMargins={false}
+                >
+                  Под залог
+                </Typography.Text>
+              </div>
+            </div>
+          </div>
+
+          {step === 5 && (
+            <div className={appSt.bottomBtnThx}>
+              <ButtonMobile
+                loading={loading}
+                onClick={submit}
+                block
+                view="primary"
+              >
+                Отправить заявку
+              </ButtonMobile>
+              <Gap size={8} />
+              <ButtonMobile
+                loading={loading}
+                onClick={() => setStep(0)}
+                block
+                view="ghost"
+                style={{ height: "56px" }}
+              >
+                Изменить условия
+              </ButtonMobile>
+            </div>
+          )}
+        </>
       )}
 
       {step === 0 && (
